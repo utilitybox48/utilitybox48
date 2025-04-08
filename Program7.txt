@@ -1,0 +1,64 @@
+7. Simulate to study the transmission of packets over Ethernet LAN and determine the number of packets drop destination
+# Create a new instance of a Simulator named "ns" 
+set ns [new Simulator]  
+ 
+# Open a new file to store Network Animator (NAM)  
+set namfile [open lab3.nam w]      
+$ns namtrace-all $namfile    
+ 
+# Open a new file to store trace data which is used for *Analysis* 
+set tracefile [open lab3.tr w]     
+$ns trace-all $tracefile  
+# Before we proceed, set the TCP packet size to 1500 bytes  
+Agent/TCP set packetSize_ 1460 
+# Creating five instances of *node* inside the "ns" instance.   
+set n0 [$ns node]      
+set n1 [$ns node] 
+set n2 [$ns node] 
+set n3 [$ns node] 
+set n4 [$ns node] 
+$ns duplex-link $n0 $n1 1Mb 10ms DropTail  
+$ns duplex-link $n1 $n2 1Mb 10ms DropTail  
+$ns  make-lan  "$n2  $n3  $n4"  100Mb  1ms  LL Queue/DropTail  Mac/802_3 Channel Phy/WiredPhy 
+# The link between node 1 and node 2 to behave as a faulty link 
+set errmodel [new ErrorModel]     
+$errmodel set rate_ 0.2  ;# error rate in the link is fixed to 0.2 
+$errmodel ranvar [new RandomVariable/Uniform]  
+$errmodel drop-target [new Agent/Null]  
+$ns lossmodel $errmodel $n1 $n2   
+# Setting up TCP Source 
+set tcp [new Agent/TCP]        
+$ns attach-agent $n0 $tcp       
+# Setting up TCP Destination (also known as TCP Sink) 
+set sink [new Agent/TCPSink]    
+$ns attach-agent $n4 $sink        
+# Setup connection between TCP Source and Destination 
+$ns connect $tcp $sink 
+# Enable FTP application on TCP Source 
+set ftp [new Application/FTP]     
+$ftp attach-agent $tcp        
+set filesize [expr 4*1024*1024]      
+$ns at 0.0 "$ftp send $filesize"   
+# User defined procedure to terminate the simulation 
+proc finish {} {              
+global ns namfile tracefile    
+$ns flush-trace      
+close $namfile      ;# Closes ex_04.nam 
+close $tracefile     ;# Closes ex_04.tr 
+set awkCode { 
+   BEGIN{}
+     { 
+         if ($1 == "d" && $5 == "tcp" && $6 > 1460) {    
+      count_packets++; 
+      print $2, count_packets >> "lab3.data"   
+    } 
+  } 
+ END{} 
+} 
+exec awk $awkCode lab3.tr       
+exec nam lab3.nam &       
+exec xgraph -bb -tk -x Time -y Dropped_Packets lab3.data -bg white & 
+exit 0 
+} 
+ $ns at 100.0 "finish"       
+$ns run 

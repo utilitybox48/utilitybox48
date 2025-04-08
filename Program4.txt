@@ -1,0 +1,73 @@
+4. Develop a simple data link layer that performs the flow control using the sliding window protocol, and loss recovery using the Go-Back-N mechanism
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+#define MAX_FRAME 10         // Max number of frames to send
+#define WINDOW_SIZE 4        // Sliding window size
+#define TIMEOUT 3            // Timeout in seconds for retransmission
+// Simulate a frame with a sequence number and data (for simplicity, just a number)
+typedef struct {
+    int seq_num;    // Sequence number of the frame
+    int data;       // Data (just a number for simplicity)
+} Frame;
+// Function to simulate packet loss with a certain probability
+int packet_loss_simulation() {
+    return rand() % 2; // 50% chance of packet loss
+}
+// Sender function that sends frames with sliding window protocol
+void sender(Frame frames[], int total_frames, int window_size) {
+    int next_frame_to_send = 0;
+    int frame_expected = 0;
+    int ack_received = 0;
+    while (frame_expected < total_frames) {
+        // Send all frames in the current window
+      while (next_frame_to_send < total_frames && next_frame_to_send < frame_expected + window_size) {
+            printf("Sender: Sending frame %d\n", frames[next_frame_to_send].seq_num);
+            // Simulate packet loss
+            if (packet_loss_simulation()) {
+                printf("Sender: Frame %d lost!\n", frames[next_frame_to_send].seq_num);
+            } else {
+                printf("Sender: Frame %d sent successfully.\n", frames[next_frame_to_send].seq_num);
+            }
+            next_frame_to_send++;
+        }
+        // Simulate waiting for acknowledgment (ACK)
+        sleep(TIMEOUT);
+        // If we haven't received an ACK, resend the unacknowledged frames
+        if (next_frame_to_send > frame_expected) {
+            printf("Sender: Timeout, resending frames starting from %d\n", frame_expected);
+            next_frame_to_send = frame_expected; // Resend the frames in the window
+        }
+    }
+}
+// Receiver function that acknowledges received frames
+void receiver(Frame frames[], int total_frames, int window_size) {
+    int expected_frame = 0;
+    while (expected_frame < total_frames) {
+        // Simulate receiving frames (only accepting the ones with correct sequence number)
+        printf("Receiver: Waiting for frame %d\n", expected_frame);
+        // Simulate receiving a frame (just the correct one for simplicity)
+        printf("Receiver: Frame %d received.\n", expected_frame);
+        expected_frame++;
+        // Acknowledge the frame
+        printf("Receiver: Acknowledging frame %d\n", expected_frame - 1);
+    }
+}
+int main() {
+    srand(time(NULL));  // Initialize random seed for simulation
+    // Create a list of frames (max of MAX_FRAME frames)
+    Frame frames[MAX_FRAME];
+    for (int i = 0; i < MAX_FRAME; i++) {
+        frames[i].seq_num = i;
+        frames[i].data = i;  // Just using the index as data
+    }
+    // Simulate the sender and receiver
+    printf("=== Sender starts ===\n");
+    sender(frames, MAX_FRAME, WINDOW_SIZE);
+    printf("=== Receiver starts ===\n");
+    receiver(frames, MAX_FRAME, WINDOW_SIZE);
+    return 0;
+}

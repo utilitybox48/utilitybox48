@@ -1,0 +1,38 @@
+2. Simulate a variety of IP based Networks using NS2
+
+
+set ns [new Simulator]
+set tracefile [open ip_simulation.tr w]
+$ns trace-all $tracefile
+set namfile [open ip_simulation.nam w]
+$ns namtrace-all $namfile
+set val(bw) 10Mb;
+set val(delay) 10ms ;
+set val(numnodes) 5 ;
+for {set i 0} {$i < $val(numnodes)} {incr i} {
+set node_($i) [$ns node]
+}
+$ns duplex-link $node_(0) $node_(1) $val(bw) $val(delay) DropTail
+$ns duplex-link $node_(1) $node_(2) $val(bw) $val(delay) DropTail
+$ns duplex-link $node_(2) $node_(3) $val(bw) $val(delay) DropTail
+$ns duplex-link $node_(3) $node_(4) $val(bw) $val(delay) DropTail
+$ns rtproto DV;
+set tcp [new Agent/TCP]
+$ns attach-agent $node_(0) $tcp
+set sink [new Agent/TCPSink]
+$ns attach-agent $node_(4) $sink
+$ns connect $tcp $sink
+set ftp [new Application/FTP]
+$ftp attach-agent $tcp
+$ns at 1.0 "$ftp start"
+$ns at 10.0 "$ftp stop"
+$ns at 11.0 "finish"
+proc finish {} {
+global ns tracefile namfile
+$ns flush-trace
+close $tracefile
+close $namfile
+exec nam ip_simulation.nam &
+exit 0
+}
+$ns run
